@@ -1,0 +1,20 @@
+{
+  "appId": "ai.clauseguard.app",
+  "appName": "ClauseGuard AI",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#071B45",
+      "showSpinner": false
+    },
+    "Camera": {
+      "permissions": ["camera", "photos"]
+    }
+  }
+}

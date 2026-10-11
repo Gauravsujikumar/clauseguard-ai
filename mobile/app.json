@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "ClauseGuard AI",
+    "slug": "clauseguard-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#071B45"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.clauseguard.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#071B45"
+      },
+      "package": "ai.clauseguard.app"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ClauseGuard AI requires camera access to scan physical legal contracts."
+        }
+      ]
+    ]
+  }
+}

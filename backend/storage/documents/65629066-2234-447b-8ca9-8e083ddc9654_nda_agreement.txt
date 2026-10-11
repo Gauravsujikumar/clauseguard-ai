@@ -1,0 +1,6 @@
+NON-DISCLOSURE AND CONFIDENTIALITY AGREEMENT
+Parties: Acme Corp and Partner LLC.
+Term: 2 years from Effective Date June 1, 2025.
+Confidentiality: Recipient shall protect Proprietary Information with at least reasonable care.
+Liability: Liquidated damages of $50,000 for breach of confidentiality obligations.
+Governing Law: The laws of the State of Delaware shall govern this Agreement.

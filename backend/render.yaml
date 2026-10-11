@@ -1,0 +1,39 @@
+﻿services:
+  - type: web
+    name: clauseguard-ai-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: PROJECT_NAME
+        value: ClauseGuard AI
+      - key: API_V1_STR
+        value: /api/v1
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "43200"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DEFAULT_AI_PROVIDER
+        value: gemini
+      - key: STORAGE_TYPE
+        value: local
+      - key: UPLOAD_DIR
+        value: /tmp/clauseguard_uploads
+      - key: FRONTEND_URL
+        value: https://clauseguard-ai.vercel.app
