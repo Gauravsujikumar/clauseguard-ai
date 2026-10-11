@@ -124,17 +124,17 @@ To test the web app directly from your smartphone connected to the same Wi-Fi ne
 
 ---
 
-## 👥 Contributors & Collaboration
-Contributions, pull requests, and suggestions are welcome!
+## 👥 Core Team & Contributors
 
-To contribute:
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+| Contributor | GitHub Profile | Role |
+| :--- | :--- | :--- |
+| **Gaurav Sujikumar** | [@Gauravsujikumar](https://github.com/Gauravsujikumar) | Project Lead / Full Stack |
+| **Madhan Goud** | [@Madhan-Goud](https://github.com/Madhan-Goud) | Core Contributor |
+| **Sankeerth** | [@sankeerth081](https://github.com/sankeerth081) | Core Contributor |
+| **Sai** | [@sai053](https://github.com/sai053) | Core Contributor |
 
 ---
+
 
 ## 📄 License
 This project is licensed under the MIT License.
