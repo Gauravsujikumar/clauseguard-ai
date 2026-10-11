@@ -1,9 +1,20 @@
 import axios from 'axios';
 
 const metaEnv = (import.meta as any).env;
+const isLocal = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname.startsWith('192.168.') ||
+  window.location.hostname.startsWith('10.') ||
+  window.location.hostname.endsWith('.local') ||
+  window.location.port === '5173'
+);
+
+export const LIVE_BACKEND_URL = 'https://backend-gray-mu-22.vercel.app/api/v1';
+
 const API_BASE_URL = metaEnv?.VITE_API_URL 
   ? `${String(metaEnv.VITE_API_URL).replace(/\/$/, '')}/api/v1` 
-  : '/api/v1';
+  : (isLocal ? '/api/v1' : LIVE_BACKEND_URL);
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

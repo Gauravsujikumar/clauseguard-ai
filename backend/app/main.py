@@ -11,17 +11,21 @@ from app.db.init_db import init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB tables for development automatically
+    # Initialize DB tables - gracefully handle any DB errors so the app still starts
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        
-        # Initialize default workspace and demo account if needed
+        print("[OK] Database tables initialized successfully")
+    except Exception as e:
+        print(f"[WARNING] Database table creation warning (non-fatal): {e}")
+
+    try:
         async with AsyncSessionLocal() as session:
             await init_db(session)
+        print("[OK] Database seeding complete")
     except Exception as e:
-        print(f"Database initialization warning: {e}")
-        
+        print(f"[WARNING] Database seeding warning (non-fatal): {e}")
+
     yield
 
 app = FastAPI(
@@ -62,4 +66,3 @@ async def health_check():
 
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(api_router, prefix="/v1")
-

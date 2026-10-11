@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, X, FileText, CheckCircle2, AlertCircle, Loader2, ArrowRight, Camera, Plus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Upload, X, FileText, CheckCircle2, AlertCircle, Loader2, ArrowRight, Camera, Plus, Image as ImageIcon } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,6 +10,64 @@ export interface UploadModalProps {
   targetMode?: 'summary' | 'risks' | 'clauses' | 'obligations' | 'all';
 }
 
+/**
+ * Client-side downscaler & compressor for mobile photo captures.
+ * Prevents OS Low Memory Killer (LMK) from crashing the browser tab / going back.
+ * Drops memory from ~100MB bitmap to ~200KB crisp JPEG while maintaining 100% legal OCR legibility.
+ */
+const compressImageFile = async (file: File): Promise<File> => {
+  if (!file.type.startsWith('image/')) return file;
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1400;
+        let { width, height } = img;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const cleanName = (file.name || 'scanned_contract.jpg').replace(/\.[^/.]+$/, '') + '.jpg';
+            const optimizedFile = new File([blob], cleanName, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(optimizedFile);
+          },
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+};
+
 export const UploadModal: React.FC<UploadModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -18,9 +76,15 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingDocs, setExistingDocs] = useState<any[]>([]);
   const [selectedExistingId, setSelectedExistingId] = useState<string>('');
+
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const addPageCameraRef = useRef<HTMLInputElement>(null);
+  const addPageFileRef = useRef<HTMLInputElement>(null);
 
   const navigate = useNavigate();
 
@@ -38,10 +102,20 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
   if (!isOpen) return null;
 
-  const addFiles = (incoming: FileList | File[] | File) => {
-    const list = incoming instanceof File ? [incoming] : Array.from(incoming);
-    setFiles((prev) => [...prev, ...list]);
-    setSelectedExistingId('');
+  const addFiles = async (incoming: FileList | File[] | File) => {
+    const rawList = incoming instanceof File ? [incoming] : Array.from(incoming);
+    if (rawList.length === 0) return;
+
+    setOptimizing(true);
+    try {
+      const optimized = await Promise.all(rawList.map(compressImageFile));
+      setFiles((prev) => [...prev, ...optimized]);
+      setSelectedExistingId('');
+    } catch (err) {
+      setFiles((prev) => [...prev, ...rawList]);
+    } finally {
+      setOptimizing(false);
+    }
   };
 
   const removeFile = (idxToRemove: number) => {
@@ -130,9 +204,66 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] w-screen h-screen flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+      {/* Hidden File Inputs controlled via explicit button refs to avoid label/form double triggers */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        id="camera-input"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            addFiles(e.target.files);
+          }
+          e.target.value = '';
+        }}
+        className="hidden"
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+        multiple
+        id="file-input"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            addFiles(e.target.files);
+          }
+          e.target.value = '';
+        }}
+        className="hidden"
+      />
+      <input
+        ref={addPageCameraRef}
+        type="file"
+        accept="image/*"
+        id="add-page-camera"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            addFiles(e.target.files);
+          }
+          e.target.value = '';
+        }}
+        className="hidden"
+      />
+      <input
+        ref={addPageFileRef}
+        type="file"
+        accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+        multiple
+        id="add-page-file-extra"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            addFiles(e.target.files);
+          }
+          e.target.value = '';
+        }}
+        className="hidden"
+      />
+
       <div className="bg-white rounded-3xl max-w-lg w-full p-7 shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in-95">
         {!uploading && (
           <button
+            type="button"
             onClick={() => {
               setFiles([]);
               setError(null);
@@ -198,33 +329,42 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               </div>
             )}
 
+            {optimizing && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-blue-700 animate-pulse">
+                <Loader2 size={16} className="animate-spin" />
+                <span>Optimizing photo scan for fastest processing...</span>
+              </div>
+            )}
+
             <form onSubmit={handleUpload} className="space-y-4">
               {/* Dual Action Buttons: Camera & File Upload (when no files yet) */}
               {files.length === 0 && (
                 <div className="grid grid-cols-2 gap-3 mb-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    id="camera-input"
-                    onChange={(e) => e.target.files && addFiles(e.target.files)}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="camera-input"
-                    className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs cursor-pointer hover:shadow-lg hover:shadow-blue-500/20 active:scale-98 transition-all"
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      cameraInputRef.current?.click();
+                    }}
+                    className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs cursor-pointer hover:shadow-lg hover:shadow-blue-500/20 active:scale-98 transition-all border-0 shadow-xs"
                   >
                     <Camera size={17} />
                     <span>Take Photo</span>
-                  </label>
+                  </button>
 
-                  <label
-                    htmlFor="file-input"
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
                     className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs cursor-pointer border border-slate-200/80 active:scale-98 transition-all"
                   >
                     <Upload size={17} />
                     <span>Upload File / PDF</span>
-                  </label>
+                  </button>
                 </div>
               )}
 
@@ -233,27 +373,18 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 <div
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={handleFileDrop}
-                  className="border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-colors border-slate-300 hover:border-[#0066FF] bg-slate-50/60"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-colors border-slate-300 hover:border-[#0066FF] bg-slate-50/60 block py-3"
                 >
-                  <input
-                    type="file"
-                    accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
-                    multiple
-                    onChange={(e) => e.target.files && addFiles(e.target.files)}
-                    className="hidden"
-                    id="file-input"
-                  />
-                  <label htmlFor="file-input" className="cursor-pointer block py-3">
-                    <div className="w-11 h-11 rounded-2xl bg-blue-50 text-[#0066FF] flex items-center justify-center mx-auto mb-2.5">
-                      <Upload size={20} />
-                    </div>
-                    <p className="text-sm font-bold text-slate-800">
-                      Drop contract photo or document here, or <span className="text-[#0066FF] underline">browse</span>
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Supports multiple photos (JPG, PNG), PDF, DOCX, and TXT
-                    </p>
-                  </label>
+                  <div className="w-11 h-11 rounded-2xl bg-blue-50 text-[#0066FF] flex items-center justify-center mx-auto mb-2.5">
+                    <Upload size={20} />
+                  </div>
+                  <p className="text-sm font-bold text-slate-800">
+                    Drop contract photo or document here, or <span className="text-[#0066FF] underline">browse</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Supports multiple photos (JPG, PNG), PDF, DOCX, and TXT
+                  </p>
                 </div>
               ) : (
                 /* Multi-Page Captured Photos Container */
@@ -268,13 +399,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setFiles([])}
-                      className="text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
+                      className="text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer border-0 bg-transparent"
                     >
                       Clear all
                     </button>
                   </div>
 
-                  {/* Horizontal Scroll of Pages + PLUS (+) Icon */}
+                  {/* Horizontal Scroll of Pages + PLUS (+) Button */}
                   <div className="flex items-center gap-3 overflow-x-auto pb-2 pt-1">
                     {files.map((f, idx) => (
                       <div 
@@ -300,7 +431,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                         <button
                           type="button"
                           onClick={() => removeFile(idx)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform hover:scale-110"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform hover:scale-110 border-0"
                           title="Remove this page"
                         >
                           <X size={11} />
@@ -308,45 +439,37 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                       </div>
                     ))}
 
-                    {/* Prominent PLUS (+) Icon Card to Add More Photos */}
-                    <div className="flex flex-col items-center justify-center shrink-0">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        id="add-page-camera"
-                        onChange={(e) => e.target.files && addFiles(e.target.files)}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="add-page-camera"
-                        className="w-24 h-28 rounded-2xl border-2 border-dashed border-blue-400 bg-blue-50/70 hover:bg-blue-100/80 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 text-[#0066FF] p-2 group shadow-xs"
-                        title="Take photo of next page (+)"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-blue-600 group-hover:bg-blue-700 text-white flex items-center justify-center shadow-md mb-1.5 transition-transform group-hover:scale-110">
-                          <Plus size={22} />
-                        </div>
-                        <span className="text-[11px] font-extrabold text-blue-700">+ Add Page</span>
-                        <span className="text-[9px] text-slate-400 font-medium">Camera / File</span>
-                      </label>
-                    </div>
+                    {/* Prominent PLUS (+) Button Card to Add More Photos */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        addPageCameraRef.current?.click();
+                      }}
+                      className="w-24 h-28 rounded-2xl border-2 border-dashed border-blue-400 bg-blue-50/70 hover:bg-blue-100/80 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 text-[#0066FF] p-2 group shadow-xs shrink-0"
+                      title="Take photo of next page (+)"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-blue-600 group-hover:bg-blue-700 text-white flex items-center justify-center shadow-md mb-1.5 transition-transform group-hover:scale-110">
+                        <Plus size={22} />
+                      </div>
+                      <span className="text-[11px] font-extrabold text-blue-700">+ Add Page</span>
+                      <span className="text-[9px] text-slate-400 font-medium">Camera</span>
+                    </button>
                   </div>
 
                   <div className="mt-2 text-center">
-                    <label 
-                      htmlFor="add-page-file-extra" 
-                      className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        addPageFileRef.current?.click();
+                      }}
+                      className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer bg-transparent border-0"
                     >
-                      <input
-                        type="file"
-                        accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
-                        multiple
-                        id="add-page-file-extra"
-                        onChange={(e) => e.target.files && addFiles(e.target.files)}
-                        className="hidden"
-                      />
                       + Choose from gallery or files instead
-                    </label>
+                    </button>
                   </div>
                 </div>
               )}
@@ -376,7 +499,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
               <button
                 type="submit"
-                disabled={files.length === 0 && !selectedExistingId}
+                disabled={(files.length === 0 && !selectedExistingId) || optimizing}
                 className="w-full py-3.5 bg-gradient-to-r from-[#0091FF] via-[#0B63FF] to-[#0D52F7] hover:brightness-105 disabled:opacity-40 text-white rounded-2xl font-bold text-sm shadow-[0_8px_20px_rgba(11,99,255,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer border-0 mt-3"
               >
                 {selectedExistingId ? (

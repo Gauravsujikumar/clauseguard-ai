@@ -38,3 +38,4 @@ backend/.vercel/
 # OS files
 .DS_Store
 Thumbs.db
+backend/extracted_sample.txt

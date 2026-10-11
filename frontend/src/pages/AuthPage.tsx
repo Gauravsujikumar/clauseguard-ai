@@ -43,8 +43,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess, initialMode 
       const status = err?.response?.status;
       const msg = err?.response?.data?.detail;
 
-      if (!err.response || status >= 500) {
-        setError('Cannot connect to backend server. Please ensure the backend is running on port 8000.');
+      if (!err.response) {
+        setError('Network error: Unable to reach backend server. Please check your internet connection.');
+      } else if (status >= 500) {
+        setError(typeof msg === 'string' ? msg : 'Backend server error. Please retry in a moment.');
       } else if (typeof msg === 'string') {
         setError(msg);
       } else if (Array.isArray(msg) && msg.length > 0) {

@@ -1,5 +1,5 @@
 import os
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 import docx
 import base64
 import json
@@ -13,26 +13,45 @@ class DocumentParserService:
     def _extract_from_image_bytes(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
         """
         Transcribes verbatim text from image bytes using Google Gemini Vision API.
-        Falls back through robust multimodal models: gemini-flash-latest, gemini-3.8-flash, gemini-3.5-flash, gemini-3.7-flash.
+        Automatically downscales large high-res camera photos to ensure sub-10s OCR response.
         """
         api_key = settings.GEMINI_API_KEY
         if not api_key:
             return ""
 
+        # Pre-process & downscale high-resolution mobile camera captures
+        try:
+            import io
+            from PIL import Image
+            with Image.open(io.BytesIO(image_bytes)) as im:
+                if im.mode != "RGB":
+                    im = im.convert("RGB")
+                if max(im.size) > 1400:
+                    im.thumbnail((1400, 1400), Image.Resampling.LANCZOS)
+                buf = io.BytesIO()
+                im.save(buf, format="JPEG", quality=85)
+                image_bytes = buf.getvalue()
+                mime_type = "image/jpeg"
+        except Exception:
+            pass
+
         b64 = base64.b64encode(image_bytes).decode("utf-8")
-        # Fast responsive verified live multimodal models
+        # Verified responsive multimodal models with active quota
         models = [
-            "gemini-2.5-flash",
-            "gemini-flash-latest",
-            "gemini-2.5-flash-lite",
-            "gemini-3.5-flash"
+            "gemini-3.5-flash-lite",
+            "gemini-flash-lite-latest",
+            "gemini-3-flash-preview",
+            "gemini-3.5-flash",
+            "gemini-3.7-flash",
+            "gemini-3.8-flash",
+            "gemini-flash-latest"
         ]
 
         payload = {
             "contents": [{
                 "parts": [
                     {"inline_data": {"mime_type": mime_type, "data": b64}},
-                    {"text": "Transcribe all readable text, tables, schedules, monetary values, and clauses from this contract or legal document image verbatim. Return only the extracted text without any commentary."}
+                    {"text": "Transcribe all readable text, tables, schedules, monetary values, and clauses from this contract or legal document image verbatim. Return only the extracted text without introductory or concluding conversational text."}
                 ]
             }]
         }
@@ -46,13 +65,19 @@ class DocumentParserService:
                     data=body,
                     headers={"Content-Type": "application/json"}
                 )
-                with urllib.request.urlopen(req, timeout=8) as resp:
+                with urllib.request.urlopen(req, timeout=25) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     candidates = data.get("candidates", [])
                     if candidates:
                         text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                         if text and len(text.strip()) > 5:
-                            return text.strip()
+                            clean_text = text.strip()
+                            # Strip any conversational introductory prefixes
+                            if clean_text.lower().startswith("here is"):
+                                lines = clean_text.splitlines()
+                                if len(lines) > 2 and ("here is" in lines[0].lower() or "transcription" in lines[0].lower()):
+                                    clean_text = "\n".join(lines[1:]).strip()
+                            return clean_text
             except Exception:
                 continue
 

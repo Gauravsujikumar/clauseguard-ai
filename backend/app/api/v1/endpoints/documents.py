@@ -16,6 +16,36 @@ from app.schemas.all_schemas import DocumentOut, FullAnalysisResponse
 from app.services.doc_parser import doc_parser
 from app.services.ai_engine import ai_engine
 
+def _safe_write_file(filename: str, contents: bytes) -> str:
+    target_dir = getattr(settings, 'EFFECTIVE_UPLOAD_DIR', None) or settings.UPLOAD_DIR
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+        file_path = os.path.join(target_dir, filename)
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        return file_path
+    except (OSError, PermissionError):
+        fallback_dir = "/tmp/clauseguard_uploads"
+        os.makedirs(fallback_dir, exist_ok=True)
+        fallback_path = os.path.join(fallback_dir, filename)
+        with open(fallback_path, "wb") as f:
+            f.write(contents)
+        return fallback_path
+
+def _safe_dest_path(filename: str) -> str:
+    target_dir = getattr(settings, 'EFFECTIVE_UPLOAD_DIR', None) or settings.UPLOAD_DIR
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+        test_file = os.path.join(target_dir, f".test_{uuid.uuid4().hex[:4]}")
+        with open(test_file, "w") as f:
+            f.write("ok")
+        os.remove(test_file)
+        return os.path.join(target_dir, filename)
+    except (OSError, PermissionError):
+        fallback_dir = "/tmp/clauseguard_uploads"
+        os.makedirs(fallback_dir, exist_ok=True)
+        return os.path.join(fallback_dir, filename)
+
 router = APIRouter()
 
 @router.post("/upload", response_model=DocumentOut)
@@ -52,11 +82,8 @@ async def upload_document(
             )
             
         save_filename = f"{file_id}_{single_file.filename}"
-        file_path = os.path.join(settings.UPLOAD_DIR, save_filename)
         contents = await single_file.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
-            
+        file_path = _safe_write_file(save_filename, contents)
         file_size = len(contents)
         mime_type = single_file.content_type
         if not mime_type:
@@ -89,10 +116,8 @@ async def upload_document(
             if p_ext not in ALLOWED_EXTS:
                 continue
             p_save_name = f"{file_id}_page_{idx+1}_{f_item.filename}"
-            p_path = os.path.join(settings.UPLOAD_DIR, p_save_name)
             p_contents = await f_item.read()
-            with open(p_path, "wb") as pf:
-                pf.write(p_contents)
+            p_path = _safe_write_file(p_save_name, p_contents)
             total_size += len(p_contents)
             saved_paths.append((p_path, p_ext))
             
@@ -116,11 +141,11 @@ async def upload_document(
         original_name = f"{title_text} ({page_count} pages)"
         
         # Merge all photo pages into a unified PDF for seamless viewing
-        merged_pdf_path = os.path.join(settings.UPLOAD_DIR, f"{file_id}_complete_document.pdf")
+        merged_pdf_path = _safe_dest_path(f"{file_id}_complete_document.pdf")
         final_doc_path = saved_paths[0][0]
         final_mime = upload_list[0].content_type or "image/jpeg"
         try:
-            import fitz
+            import pymupdf as fitz
             merged_pdf = fitz.open()
             for p_path, p_ext in saved_paths:
                 if p_ext in [".jpg", ".jpeg", ".png", ".webp"]:

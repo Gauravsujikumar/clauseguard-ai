@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Alert
 } from 'react-native';
+import { mobileApi } from '../api/mobileApi';
 
 export const MobileHomeScreen = ({ navigation }: { navigation: any }) => {
   const [recentContracts, setRecentContracts] = useState<any[]>([]);

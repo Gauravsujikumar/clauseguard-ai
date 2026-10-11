@@ -29,8 +29,10 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onLoginSuccess }) =>
     } catch (err: any) {
       const status = err?.response?.status;
       const detail = err?.response?.data?.detail;
-      if (!err.response || status >= 500) {
-        setError('Cannot connect to backend server. Please ensure the backend is running on port 8000.');
+      if (!err.response) {
+        setError('Network error: Unable to reach backend server. Please check your internet connection.');
+      } else if (status >= 500) {
+        setError(detail || 'Backend server is processing requests. Please retry in a moment.');
       } else {
         setError(detail || 'Registration failed. Please check your details.');
       }

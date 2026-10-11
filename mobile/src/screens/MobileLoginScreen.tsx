@@ -25,7 +25,7 @@ export const MobileLoginScreen = ({ onLogin }: { onLogin: (user: any) => void })
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('demo@clauseguard.ai');
-  const [password, setPassword] = useState('demo123456');
+  const [password, setPassword] = useState('Password123!');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

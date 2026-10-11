@@ -325,7 +325,7 @@ export const AnalysisPage: React.FC = () => {
     );
   }
 
-  const { document: doc, summary, risks = [], clauses = [], obligations = [], pages = [] } = analysisData;
+  const { document: doc, summary, risks = [], clauses = [], obligations = [], pages = [], metadata = [] } = analysisData;
   const totalPages = pages.length > 0 ? pages.length : (doc.page_count || 1);
   const activePageData = pages.find((p: any) => p.page_number === currentPage) || pages[0];
   const currentPageText = activePageData?.content || '';
@@ -348,7 +348,7 @@ export const AnalysisPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              {doc.document_type || 'Contract Analysis'}
+              {doc.document_type ? (translated.translateMetadataValue ? translated.translateMetadataValue(doc.document_type) : doc.document_type) : (translated.ui.findingsBadge || 'Contract Analysis')}
             </span>
           </div>
           <h1 
@@ -358,12 +358,12 @@ export const AnalysisPage: React.FC = () => {
             {doc.title}
           </h1>
           <p className="text-xs text-slate-400 font-medium mt-0.5">
-            {totalPages} {totalPages === 1 ? 'Page' : 'Pages'} • {doc.original_filename || 'Original Document'}
+            {totalPages} {totalPages === 1 ? (translated.ui.pageLabel || 'Page') : (translated.ui.pagesLabel || 'Pages')} • {doc.original_filename || 'Original Document'}
           </p>
         </div>
 
         {/* View Switcher: Language Button, Original File & View Tabs */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0 shrink-0">
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-start sm:justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0 shrink-0">
           
           {/* Language Selector Popover */}
           <div className="relative">
@@ -381,44 +381,50 @@ export const AnalysisPage: React.FC = () => {
             </button>
 
             {isLangMenuOpen && (
-              <div className="absolute top-full right-0 mt-2 z-50 p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-72 sm:w-80 max-w-[calc(100vw-24px)] space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                    Select Language (భాష / भाषा)
-                  </span>
-                  <button
-                    onClick={() => setIsLangMenuOpen(false)}
-                    className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer border-0 bg-transparent"
-                  >
-                    ✕
-                  </button>
-                </div>
+              <>
+                <div 
+                  className="fixed inset-0 z-40 bg-transparent" 
+                  onClick={() => setIsLangMenuOpen(false)} 
+                />
+                <div className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2 z-50 p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-72 sm:w-80 max-w-[calc(100vw-32px)] space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                      Select Language (భాష / भाषा)
+                    </span>
+                    <button
+                      onClick={() => setIsLangMenuOpen(false)}
+                      className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer border-0 bg-transparent"
+                    >
+                      ✕
+                    </button>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-0.5">
-                  {LANGUAGE_OPTIONS.map((lang) => {
-                    const isSelected = selectedLang === lang.code;
-                    return (
-                      <button
-                        key={lang.code}
-                        onClick={() => {
-                          handleLanguageChange(lang.code);
-                          setIsLangMenuOpen(false);
-                        }}
-                        className={`p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex flex-col items-center sm:items-start text-center sm:text-left border active:scale-95 ${
-                          isSelected
-                            ? 'bg-[#0066FF] text-white border-[#0066FF] shadow-xs'
-                            : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
-                        }`}
-                      >
-                        <span className="font-extrabold text-xs">{lang.nativeName}</span>
-                        <span className={`text-[10px] ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
-                          {lang.name}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-0.5">
+                    {LANGUAGE_OPTIONS.map((lang) => {
+                      const isSelected = selectedLang === lang.code;
+                      return (
+                        <button
+                          key={lang.code}
+                          onClick={() => {
+                            handleLanguageChange(lang.code);
+                            setIsLangMenuOpen(false);
+                          }}
+                          className={`p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex flex-col items-center sm:items-start text-center sm:text-left border active:scale-95 ${
+                            isSelected
+                              ? 'bg-[#0066FF] text-white border-[#0066FF] shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
+                          }`}
+                        >
+                          <span className="font-extrabold text-xs">{lang.nativeName}</span>
+                          <span className={`text-[10px] ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                            {lang.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
@@ -428,7 +434,7 @@ export const AnalysisPage: React.FC = () => {
             title="View Original Uploaded File / Scanned Stamp Paper"
           >
             <Eye size={15} />
-            <span>View Original File</span>
+            <span>{translated.ui.viewOriginalFile || 'View Original File'}</span>
           </button>
 
           <div className="flex items-center p-1 bg-slate-100 rounded-xl text-xs font-bold">
@@ -438,7 +444,7 @@ export const AnalysisPage: React.FC = () => {
                 activeView === 'report' ? 'bg-white shadow-xs text-[#0066FF]' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              Analysis Report
+              {translated.ui.analysisReport || 'Analysis Report'}
             </button>
             <button
               onClick={() => setActiveView('copilot')}
@@ -446,7 +452,7 @@ export const AnalysisPage: React.FC = () => {
                 activeView === 'copilot' ? 'bg-white shadow-xs text-[#0066FF]' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              Ask Questions
+              {translated.ui.askQuestions || 'Ask Questions'}
             </button>
           </div>
 
@@ -648,7 +654,7 @@ export const AnalysisPage: React.FC = () => {
                           {tRisk.severityLabel || `${risk.severity || 'High'} ${translated.ui.highRisk}`}
                         </span>
                         <span className="px-2.5 py-0.5 rounded-lg bg-rose-100 text-rose-700 font-bold text-[10px] uppercase">
-                          {risk.category || 'Liability'}
+                          {tRisk.category || (translated.translateCategory ? translated.translateCategory(risk.category) : risk.category) || 'Liability'}
                         </span>
                         <button
                           onClick={() => handleToggleSpeaker(riskSpeech)}
@@ -656,11 +662,11 @@ export const AnalysisPage: React.FC = () => {
                           title="Listen to this risk in selected language"
                         >
                           <Volume2 size={11} className="text-rose-600" />
-                          <span>{isSpeaking ? 'Stop' : 'Listen'}</span>
+                          <span>{isSpeaking ? (translated.ui.stopAction || 'Stop') : (translated.ui.listenAction || 'Listen')}</span>
                         </button>
                       </div>
                       <span className="text-xs font-bold text-slate-400">
-                        {risk.section_ref || `Page ${risk.page_number || 1}`}
+                        {risk.section_ref || `${translated.ui.pageLabel || 'Page'} ${risk.page_number || 1}`}
                       </span>
                     </div>
 
@@ -692,7 +698,7 @@ export const AnalysisPage: React.FC = () => {
                             title="Listen to recommendation in selected language"
                           >
                             <Volume2 size={12} className="text-[#0066FF]" />
-                            <span>{isSpeaking ? 'Stop' : 'Listen'}</span>
+                            <span>{isSpeaking ? (translated.ui.stopAction || 'Stop') : (translated.ui.listenAction || 'Listen')}</span>
                           </button>
                         </div>
 
@@ -788,7 +794,7 @@ export const AnalysisPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
                           <Clock size={12} />
-                          <span>{o.deadline_expression || 'Per Terms'}</span>
+                          <span>{o.deadline_expression ? (translated.translateMetadataValue ? translated.translateMetadataValue(o.deadline_expression) : o.deadline_expression) : (translated.ui.perTerms || 'Per Terms')}</span>
                         </span>
                         {o.calculated_deadline && (
                           <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg flex items-center gap-1">
@@ -824,11 +830,11 @@ export const AnalysisPage: React.FC = () => {
                     <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-2xl text-xs space-y-1">
                       <div className="flex items-center gap-1.5 font-bold text-amber-900">
                         <Info size={14} className="text-amber-600 shrink-0" />
-                        <span>Why this status & how to understand:</span>
+                        <span>{translated.ui.whyThisStatus || 'Why this status & how to understand:'}</span>
                       </div>
                       <p className="text-slate-700 leading-relaxed pl-5 font-medium">
                         {tObligation.explanation}
-                        {o.notes ? ` Directive notes: ${o.notes}` : ''}
+                        {o.notes ? ` ${translated.ui.directiveNotes || 'Directive notes:'} ${translated.translateMetadataValue ? translated.translateMetadataValue(o.notes) : o.notes}` : ''}
                       </p>
                     </div>
                   </div>

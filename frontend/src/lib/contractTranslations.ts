@@ -21,35 +21,23 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
   { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ', badge: 'PAN' }
 ];
 
+import {
+  UIStrings,
+  REGIONAL_UI_STRINGS,
+  METADATA_FIELD_MAP,
+  CATEGORY_MAP,
+  translateLegalSentence
+} from './legalDictionary';
+
 export interface TranslatedContent {
-  ui: {
-    findingsBadge: string;
-    detailed: string;
-    quick: string;
-    contractingParties: string;
-    consideration: string;
-    termDuration: string;
-    recommendationBadge: string;
-    easyExplanationTitle: string;
-    keyRisksBadge: string;
-    highRisk: string;
-    mediumRisk: string;
-    lowRisk: string;
-    speakerLabel: string;
-    speakerPlaying: string;
-    viewOriginalFile: string;
-    clausesBadge: string;
-    obligationsBadge: string;
-    responsibleParty: string;
-    beneficiaryParty: string;
-    deadlineBadge: string;
-  };
+  ui: UIStrings;
   summary: {
     detailed_summary: string;
     quick_summary: string;
   };
   translateRisk: (risk: any) => {
     title: string;
+    category?: string;
     explanation: string;
     suggested_action: string;
     easy_explanation: string;
@@ -65,6 +53,9 @@ export interface TranslatedContent {
     description: string;
     explanation: string;
   };
+  translateMetadataField?: (fieldName: string) => string;
+  translateMetadataValue?: (fieldVal: string) => string;
+  translateCategory?: (category: string) => string;
 }
 
 // Helper: match legal patterns in risk text
@@ -108,7 +99,7 @@ function detectObligationType(desc: string, deadline: string): 'milestone' | 'op
   return 'milestone';
 }
 
-export function getTranslatedContractData(
+function getRawTranslatedContractData(
   langCode: string,
   originalSummary: any,
   originalRisks: any[] = []
@@ -1062,6 +1053,103 @@ export function getTranslatedContractData(
                      oType === 'operational' ? 'Active operational duty in effect continuously throughout the agreement term.' :
                      'Contingent provision triggered only if early termination or a specific contractual condition occurs.'
       };
+    }
+  };
+}
+
+// Exported Multilingual Translator Wrapper for ClauseGuard AI
+// Guarantees all UI controls, risk explanations, clauses, obligations, and metadata
+// are authentically translated into the chosen regional language.
+export function getTranslatedContractData(
+  langCode: string,
+  originalSummary: any,
+  originalRisks: any[] = []
+): TranslatedContent {
+  const code = langCode.slice(0, 2).toLowerCase();
+  const rawData = getRawTranslatedContractData(langCode, originalSummary, originalRisks);
+  const regionalUI = REGIONAL_UI_STRINGS[code] || REGIONAL_UI_STRINGS.en;
+  const isEnglish = code === 'en';
+
+  return {
+    ...rawData,
+    ui: {
+      ...rawData.ui,
+      ...regionalUI,
+    },
+    translateRisk: (risk: any) => {
+      const r = rawData.translateRisk(risk);
+      const cat = CATEGORY_MAP[risk?.category]?.[code] || risk?.category || 'Liability';
+      
+      const expl = (!isEnglish && r.explanation === risk?.explanation)
+        ? translateLegalSentence(risk?.explanation, code)
+        : r.explanation;
+
+      const act = (!isEnglish && r.suggested_action === risk?.suggested_action)
+        ? translateLegalSentence(risk?.suggested_action, code)
+        : r.suggested_action;
+
+      const title = (!isEnglish && (r.title.includes('(లీగల్ రిస్క్)') || r.title === risk?.title))
+        ? translateLegalSentence(risk?.title, code)
+        : r.title;
+
+      const easyExpl = (!isEnglish && (!r.easy_explanation || r.easy_explanation === risk?.easy_explanation))
+        ? translateLegalSentence(risk?.easy_explanation || risk?.suggested_action, code)
+        : r.easy_explanation;
+
+      return {
+        ...r,
+        title,
+        category: cat,
+        explanation: expl,
+        suggested_action: act,
+        easy_explanation: easyExpl,
+      };
+    },
+    translateClause: (clause: any) => {
+      const c = rawData.translateClause(clause);
+      const plain = (!isEnglish && c.plain_summary === clause?.plain_summary)
+        ? translateLegalSentence(clause?.plain_summary, code)
+        : c.plain_summary;
+      return {
+        ...c,
+        plain_summary: plain,
+      };
+    },
+    translateObligation: (obligation: any) => {
+      const o = rawData.translateObligation(obligation);
+      const desc = (!isEnglish && o.description === obligation?.description)
+        ? translateLegalSentence(obligation?.description, code)
+        : o.description;
+      return {
+        ...o,
+        description: desc,
+      };
+    },
+    translateMetadataField: (fieldName: string) => {
+      return METADATA_FIELD_MAP[fieldName]?.[code] || fieldName;
+    },
+    translateMetadataValue: (fieldVal: string) => {
+      if (!fieldVal) return '—';
+      if (fieldVal === 'Commercial Contract' || fieldVal === 'Commercial Agreement') {
+        const map: Record<string, string> = {
+          te: 'వాణిజ్య ఒప్పందం', hi: 'व्यावसायिक अनुबंध', ta: 'வணிக ஒப்பந்தம்',
+          kn: 'ವಾಣಿಜ್ಯ ಒಪ್ಪಂದ', mr: 'व्यावसायिक करार', bn: 'বাণিজ্যিক চুক্তি',
+          gu: 'વાણિજ્યિક કરાર', ml: 'വാണിജ്യ കരാർ', pa: 'ਵਪਾਰਕ ਇਕਰਾਰਨਾਮਾ'
+        };
+        return map[code] || fieldVal;
+      }
+      if (fieldVal === 'Not specified in document' || fieldVal === 'Not specified') {
+        const map: Record<string, string> = {
+          te: 'పత్రంలో పేర్కొనబడలేదు', hi: 'दस्तावेज़ में उल्लिखित नहीं', ta: 'ஆவணத்தில் குறிப்பிடப்படவில்லை',
+          kn: 'ದಾಖಲೆಯಲ್ಲಿ ಉಲ್ಲೇಖಿಸಲಾಗಿಲ್ಲ', mr: 'दस्तऐवजात नमूद नाही', bn: 'নথিতে উল্লেখ নেই',
+          gu: 'દસ્તાવેજમાં ઉલ્લેખ નથી', ml: 'രേഖയിൽ വ്യക്തമാക്കിയിട്ടില്ല', pa: 'ਦਸਤਾਵੇਜ਼ ਵਿੱਚ ਦਰਜ ਨਹੀਂ'
+        };
+        return map[code] || fieldVal;
+      }
+      return fieldVal;
+    },
+    translateCategory: (category: string) => {
+      return CATEGORY_MAP[category]?.[code] || category;
     }
   };
 }

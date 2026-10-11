@@ -54,15 +54,32 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-settings = Settings()
+def _resolve_safe_upload_dir(initial_dir: str) -> str:
+    # Always use /tmp on Vercel, AWS Lambda, or serverless
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        target = "/tmp/clauseguard_uploads"
+        try:
+            os.makedirs(target, exist_ok=True)
+        except OSError:
+            pass
+        return target
 
-# Ensure upload directory exists safely without crashing on read-only environments
-try:
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-except OSError:
-    settings.UPLOAD_DIR = "/tmp/clauseguard_uploads"
+    # Test if target directory is actually writable
     try:
-        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    except OSError:
-        pass
+        os.makedirs(initial_dir, exist_ok=True)
+        test_file = os.path.join(initial_dir, f".write_test_{os.getpid()}")
+        with open(test_file, "w") as f:
+            f.write("ok")
+        os.remove(test_file)
+        return initial_dir
+    except (OSError, PermissionError):
+        target = "/tmp/clauseguard_uploads"
+        try:
+            os.makedirs(target, exist_ok=True)
+        except OSError:
+            pass
+        return target
+
+settings = Settings()
+settings.UPLOAD_DIR = _resolve_safe_upload_dir(settings.UPLOAD_DIR)
 
