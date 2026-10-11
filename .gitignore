@@ -1,0 +1,40 @@
+# Virtual Environment
+venv/
+backend/venv/
+.venv/
+env/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+
+# Local databases & uploads
+backend/clauseguard.db
+clauseguard.db
+backend/storage/documents/*
+!backend/storage/documents/.gitkeep
+storage/documents/*
+!storage/documents/.gitkeep
+
+# Environment files
+.env
+backend/.env
+frontend/.env.local
+
+# Vercel
+.vercel/
+frontend/.vercel/
+backend/.vercel/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -27,7 +27,7 @@ def normalize_database_url(url: str) -> str:
         
     return url
 
-db_url = normalize_database_url(settings.DATABASE_URL)
+db_url = normalize_database_url(settings.EFFECTIVE_DATABASE_URL)
 
 extra_engine_args = {}
 if "sqlite" in db_url:

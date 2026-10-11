@@ -17,9 +17,11 @@ class AIEngineService:
             raise ValueError("GEMINI_API_KEY is not configured")
 
         models = [
-            "gemini-3.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-flash-latest",
+            "gemini-2.5-flash-lite",
             "gemini-3.5-flash",
-            "gemini-3.1-flash-lite"
+            "gemini-3.5-flash-lite"
         ]
         last_error = None
 
@@ -38,7 +40,7 @@ class AIEngineService:
                     headers={"Content-Type": "application/json"}
                 )
 
-                with urllib.request.urlopen(req, timeout=12) as resp:
+                with urllib.request.urlopen(req, timeout=25) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
                     if json_mode:

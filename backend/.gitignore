@@ -1,0 +1,26 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+
+# Local databases & uploads
+clauseguard.db
+storage/documents/*
+!storage/documents/.gitkeep
+
+# Environment files
+.env
+
+# Vercel
+.vercel/
+
+.vercel
+.env*

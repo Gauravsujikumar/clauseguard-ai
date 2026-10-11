@@ -22,9 +22,10 @@ class DocumentParserService:
         b64 = base64.b64encode(image_bytes).decode("utf-8")
         # Fast responsive verified live multimodal models
         models = [
-            "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-3.1-flash-lite"
+            "gemini-2.5-flash",
+            "gemini-flash-latest",
+            "gemini-2.5-flash-lite",
+            "gemini-3.5-flash"
         ]
 
         payload = {

@@ -12,12 +12,15 @@ from app.db.init_db import init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize DB tables for development automatically
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    # Initialize default workspace and demo account if needed
-    async with AsyncSessionLocal() as session:
-        await init_db(session)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        
+        # Initialize default workspace and demo account if needed
+        async with AsyncSessionLocal() as session:
+            await init_db(session)
+    except Exception as e:
+        print(f"Database initialization warning: {e}")
         
     yield
 
@@ -37,6 +40,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/", tags=["Root"])
+@app.get("/api", tags=["Root"])
+async def root():
+    return {
+        "status": "healthy",
+        "service": settings.PROJECT_NAME,
+        "message": "ClauseGuard AI Enterprise Contract Intelligence Backend API is active and running."
+    }
+
+@app.get("/health", tags=["Health"])
+@app.get("/v1/health", tags=["Health"])
 @app.get("/api/v1/health", tags=["Health"])
 async def health_check():
     return {
@@ -46,4 +60,6 @@ async def health_check():
         "ai_provider": settings.DEFAULT_AI_PROVIDER
     }
 
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/v1")
+

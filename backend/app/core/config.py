@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     
     # Storage
     STORAGE_TYPE: str = "local"
-    UPLOAD_DIR: str = "./storage/documents"
+    UPLOAD_DIR: str = "/tmp/clauseguard_uploads" if (os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")) else "./storage/documents"
     
     # AI Credentials
     OPENAI_API_KEY: Optional[str] = None
@@ -41,6 +41,13 @@ class Settings(BaseSettings):
             origins.append(self.FRONTEND_URL)
         return origins
 
+    @property
+    def EFFECTIVE_DATABASE_URL(self) -> str:
+        url = self.DATABASE_URL
+        if (os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")) and "clauseguard.db" in url and not url.startswith("sqlite+aiosqlite:////tmp/"):
+            return "sqlite+aiosqlite:////tmp/clauseguard.db"
+        return url
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -49,6 +56,13 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Ensure upload directory exists
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+# Ensure upload directory exists safely without crashing on read-only environments
+try:
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+except OSError:
+    settings.UPLOAD_DIR = "/tmp/clauseguard_uploads"
+    try:
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    except OSError:
+        pass
 

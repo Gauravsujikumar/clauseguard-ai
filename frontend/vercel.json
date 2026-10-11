@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": "https://stupid-keys-boil.loca.lt/api/v1/:path*"
+      "destination": "https://backend-gray-mu-22.vercel.app/api/v1/:path*"
     },
     {
       "source": "/(.*)",
