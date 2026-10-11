@@ -122,7 +122,7 @@ To test the web app directly from your smartphone connected to the same Wi-Fi ne
 - Sensitive environment keys (`.env`) are excluded from version control via `.gitignore`.
 - OCR images are compressed client-side before transmission to reduce network overhead and ensure privacy.
 
----
+----
 
 ## 👥 Core Team & Contributors
 
