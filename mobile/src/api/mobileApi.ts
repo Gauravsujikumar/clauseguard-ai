@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Configure backend FastAPI URL (Supports local dev emulator or production host)
-const API_BASE_URL = 'http://10.0.2.2:8000/api/v1'; // Android emulator localhost alias
+// Configure backend FastAPI URL (Live cloud backend accessible on any physical mobile device or emulator)
+const API_BASE_URL = 'https://backend-gray-mu-22.vercel.app/api/v1';
 
 export const mobileApiClient = axios.create({
   baseURL: API_BASE_URL,
