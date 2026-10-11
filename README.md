@@ -3,7 +3,7 @@
 
 ClauseGuard AI is an AI-powered legal document intelligence application designed to analyze commercial contracts, leases, vendor agreements, and government tenders. It features instant OCR photo scanning for physical stamp papers, risk scoring, clause extraction, deadline obligation tracking, multilingual translation across 10 Indian regional languages, and interactive Copilot Q&A.
 
-----
+-----
 
 ## 🌟 Key Features
 
